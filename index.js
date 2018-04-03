@@ -182,7 +182,8 @@ app.post('/register', (req, res) => {
 
 app.post('/allow_domains', (req, res) => {
   if (Key === req.body.server_key) {
-    res.send(JSON.stringify(allowDomains))
+    res.header('Content-Type', 'application/json; charset=utf-8')
+    res.send(allowDomains)
   } else {
     res.sendStatus(403)
   }
