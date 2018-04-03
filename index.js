@@ -6,9 +6,11 @@ import npmlog from 'npmlog'
 import morgan from 'morgan'
 import Sequelize from 'sequelize'
 
-const app       = express()
-const serverKey = process.env.SERVER_KEY || ''
-const port      = process.env.PORT || 3000
+const app         = express()
+const serverKey   = process.env.SERVER_KEY || ''
+const port        = process.env.PORT || 3000
+const Key         = process.env.serverKey
+const allowDomains = process.env.allowDomains
 const wsStorage = {}
 const sequelize = new Sequelize('sqlite://tusky.sqlite', {
   logging: npmlog.verbose,
@@ -169,9 +171,21 @@ app.get('/', (req, res) => {
 })
 
 app.post('/register', (req, res) => {
-  Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, filter: req.body.filter_json }})
-  connectForUser(req.body.instance_url, req.body.access_token, req.body.device_token)
-  res.sendStatus(201)
+  if (Key === req.body.server_key && allowDomains[req.body.instance_url]) {
+    Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, filter: req.body.filter_json }})
+    connectForUser(req.body.instance_url, req.body.access_token, req.body.device_token)
+    res.sendStatus(201)
+  } else {
+    res.sendStatus(403)
+  }
+})
+
+app.post('/allow_domains', (req, res) => {
+  if (Key === req.body.server_key) {
+    res.send(JSON.stringify(allowDomains))
+  } else {
+    res.sendStatus(403)
+  }
 })
 
 app.post('/unregister', (req, res) => {
