@@ -15,7 +15,8 @@ const sequelize = new Sequelize('sqlite://tusky.sqlite', {
   storage: 'db/tusky.sqlite'
 })
 
-const connectForUser = (baseUrl, accessToken, deviceToken) => {
+const connectForUser = (baseUrl, accessToken, deviceToken, filter) => {
+  const send_filter = JSON.parse(filter);
   const log = (level, message) => npmlog.log(level, `${baseUrl}:${deviceToken}`, message)
 
   if (typeof wsStorage[`${baseUrl}:${accessToken}`] !== 'undefined') {
@@ -42,6 +43,13 @@ const connectForUser = (baseUrl, accessToken, deviceToken) => {
     }
 
     const payload = JSON.parse(json.payload)
+
+    if ((payload.type === "follow" && (send_filter["all"]["follow"] || send_filter["user"][payload.acct]["follow"])) ||
+      (payload.type === "mention" && (send_filter["all"]["mention"] || send_filter["user"][payload.acct]["mention"])) ||
+      (payload.type === "reblog" && (send_filter["all"]["reblog"] || send_filter["user"][payload.acct]["reblog"])) ||
+      (payload.type === "favourite" && (send_filter["all"]["favourite"] || send_filter["user"][payload.acct]["favourite"]))) {
+      return
+    }
 
     const firebaseMessage = {
       to: deviceToken,
@@ -140,13 +148,17 @@ const Registration = sequelize.define('registration', {
 
   deviceToken: {
     type: Sequelize.STRING
+  },
+
+  filter: {
+    type: Sequelize.STRING
   }
 })
 
 Registration.sync()
   .then(() => Registration.findAll())
   .then(registrations => registrations.forEach(registration => {
-    connectForUser(registration.instanceUrl, registration.accessToken, registration.deviceToken)
+    connectForUser(registration.instanceUrl, registration.accessToken, registration.deviceToken, registration.filter)
   }))
 
 app.use(morgan('combined'));
@@ -157,7 +169,7 @@ app.get('/', (req, res) => {
 })
 
 app.post('/register', (req, res) => {
-  Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token }})
+  Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, filter: req.body.filter_json }})
   connectForUser(req.body.instance_url, req.body.access_token, req.body.device_token)
   res.sendStatus(201)
 })
