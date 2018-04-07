@@ -288,6 +288,10 @@ app.post('/info', (req, res) => {
   }
 })
 
+app.post('/ping', (req, res) => {
+  res.send(req.body)
+})
+
 app.post('/unregister', (req, res) => {
   disconnectForUser(req.body.instance_url, req.body.access_token)
   res.sendStatus(201)
