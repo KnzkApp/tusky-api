@@ -252,7 +252,7 @@ app.post('/register', (req, res) => {
   const date = new Date();
 
   if (Key === req.body.server_key && allowDomains[req.body.instance_url] && req.body.device_token && req.body.mode) {
-    axios.post('https://'+req.body.instance_url+'/api/v1/accounts/verify_credentials', {}, {
+    axios.get('https://'+req.body.instance_url+'/api/v1/accounts/verify_credentials', {}, {
       headers: {
         'Authorization': `Bearer `+req.body.access_token,
         'Content-Type': 'application/json'
