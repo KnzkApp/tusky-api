@@ -63,6 +63,10 @@ const connectForUser = (config, created_at, acct) => {
         return
       }
 
+      if (!send_filter["user"][payload.acct]) {
+        send_filter["user"][payload.acct] = {}
+      }
+
       if ((payload.type === "follow" && (send_filter["all"]["follow"] || send_filter["user"][payload.acct]["follow"])) ||
         (payload.type === "mention" && (send_filter["all"]["mention"] || send_filter["user"][payload.acct]["mention"])) ||
         (payload.type === "reblog" && (send_filter["all"]["reblog"] || send_filter["user"][payload.acct]["reblog"])) ||
