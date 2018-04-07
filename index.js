@@ -258,7 +258,7 @@ app.post('/register', (req, res) => {
         'Content-Type': 'application/json'
       }
     }).then(response => {
-      let getdate = date.getTime(), acct = response.acct + "@" + req.body.instance_url;
+      let getdate = date.getTime(), acct = response.data.acct + "@" + req.body.instance_url;
 
       Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
         if (registration != null) {
