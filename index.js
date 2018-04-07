@@ -5,19 +5,37 @@ import bodyParser from 'body-parser'
 import npmlog from 'npmlog'
 import morgan from 'morgan'
 import Sequelize from 'sequelize'
+import dotenv from 'dotenv'
+
+dotenv.config();
 
 const app         = express()
 const serverKey   = process.env.SERVER_KEY || ''
 const port        = process.env.PORT || 3000
-const Key         = process.env.serverKey
-const allowDomains = process.env.allowDomains
+const Key         = process.env.ACCESS_KEY
+const allowDomains = process.env.ALLOW_DOMAINS
 const wsStorage = {}
-const sequelize = new Sequelize('sqlite://tusky.sqlite', {
+const sequelize = new Sequelize('sqlite://apppush.sqlite', {
   logging: npmlog.verbose,
-  storage: 'db/tusky.sqlite'
+  storage: 'db/apppush.sqlite'
 })
 
-const connectForUser = (baseUrl, accessToken, deviceToken, filter) => {
+const connectForUser = (config, created_at, acct) => {
+  const baseUrl = config.instance_url || config.instanceUrl
+    , accessToken = config.access_token || config.accessToken
+    , deviceToken = config.device_token || config.deviceToken
+    , filter = config.filter_json || config.filter
+    , mode = config.mode
+    , language = config.language
+
+  let nowDate = new Date();
+  nowDate.setDate(nowDate.getDate() + 7);
+  if (created_at > nowDate.getTime()) { //有効期限過ぎた
+    disconnectForUser(baseUrl, accessToken)
+    return
+  }
+
+
   const send_filter = JSON.parse(filter);
   const log = (level, message) => npmlog.log(level, `${baseUrl}:${deviceToken}`, message)
 
@@ -37,26 +55,55 @@ const connectForUser = (baseUrl, accessToken, deviceToken, filter) => {
 
   const onMessage = data => {
     const json = JSON.parse(data)
-
-    log('info', `New notification: ${json.event}`)
-
-    if (json.event !== 'notification') {
-      return
-    }
-
     const payload = JSON.parse(json.payload)
 
-    if ((payload.type === "follow" && (send_filter["all"]["follow"] || send_filter["user"][payload.acct]["follow"])) ||
-      (payload.type === "mention" && (send_filter["all"]["mention"] || send_filter["user"][payload.acct]["mention"])) ||
-      (payload.type === "reblog" && (send_filter["all"]["reblog"] || send_filter["user"][payload.acct]["reblog"])) ||
-      (payload.type === "favourite" && (send_filter["all"]["favourite"] || send_filter["user"][payload.acct]["favourite"]))) {
+    if (mode === "Notification") {
+      log('info', `New notification: ${json.event}`)
+      if (json.event !== 'notification') {
+        return
+      }
+
+      if ((payload.type === "follow" && (send_filter["all"]["follow"] || send_filter["user"][payload.acct]["follow"])) ||
+        (payload.type === "mention" && (send_filter["all"]["mention"] || send_filter["user"][payload.acct]["mention"])) ||
+        (payload.type === "reblog" && (send_filter["all"]["reblog"] || send_filter["user"][payload.acct]["reblog"])) ||
+        (payload.type === "favourite" && (send_filter["all"]["favourite"] || send_filter["user"][payload.acct]["favourite"]))) {
+        return
+      }
+
+      let text = "";
+      if (!payload.account.display_name) payload.account.display_name = payload.account.username
+
+      if (language === "ja") {
+        text = "["+acct+"] "+payload["account"]["display_name"]+" さん ("+payload["account"]["acct"]+") があなた";
+        if (payload["type"] === "follow") { //フォロー
+          text += "をフォローしました";
+        } else if (payload["type"] === "mention") { //メンション
+          text += "にメンションしました";
+        } else if (payload["type"] === "reblog") { //ブースト
+          text += "の投稿をブーストしました";
+        } else if (payload["type"] === "favourite") { //お気に入り
+          text += "の投稿をお気に入りしました";
+        }
+      } else {
+        log('info', 'Not found language:'+language)
+        return
+      }
+    } else if (mode === "Keyword") {
+      log('info', `New keyword match: ${json.event}`)
+      if (json.event !== 'update') {
+        return
+      }
+
+    }
+
+    if (!text) {
       return
     }
 
     const firebaseMessage = {
       to: deviceToken,
       priority: 'high',
-      data: { notification_id: payload.id }
+      notification : {"title" : text}
     }
 
     axios.post('https://fcm.googleapis.com/fcm/send', JSON.stringify(firebaseMessage), {
@@ -160,7 +207,7 @@ const Registration = sequelize.define('registration', {
 Registration.sync()
   .then(() => Registration.findAll())
   .then(registrations => registrations.forEach(registration => {
-    connectForUser(registration.instanceUrl, registration.accessToken, registration.deviceToken, registration.filter)
+    connectForUser(registration, registration.created_at, registration.acct)
   }))
 
 app.use(morgan('combined'));
@@ -171,19 +218,50 @@ app.get('/', (req, res) => {
 })
 
 app.post('/register', (req, res) => {
-  if (Key === req.body.server_key && allowDomains[req.body.instance_url]) {
-    Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, filter: req.body.filter_json }})
-    connectForUser(req.body.instance_url, req.body.access_token, req.body.device_token)
-    res.sendStatus(201)
+  if (req.body.language !== "ja" && req.body.language !== "en") {
+    res.sendStatus(406)
+    return
+  }
+
+  if (req.body.mode !== "Notification" && req.body.mode !== "Keyword") {
+    res.sendStatus(406)
+    return
+  }
+
+  const date = new Date();
+
+  if (Key === req.body.server_key && allowDomains[req.body.instance_url] && req.body.device_token && req.body.mode) {
+    axios.post('https://'+req.body.instance_url+'/api/v1/accounts/verify_credentials', {}, {
+      headers: {
+        'Authorization': `Bearer `+req.body.access_token,
+        'Content-Type': 'application/json'
+      }
+    }).then(response => {
+      let getdate = date.getTime(), acct = response.acct + "@" + req.body.instance_url;
+
+      Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
+        if (registration != null) {
+          registration.destroy()
+        }
+        Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, filter: req.body.filter_json, language: req.body.language, created_at: getdate, acct: acct, mode: req.body.mode }})
+      })
+
+      connectForUser(req.body, getdate, acct)
+      res.sendStatus(201)
+    }).catch(error => {
+      log('error', `Error verify_credentials, status: ${error.response.status}: ${JSON.stringify(error.response.data)}`)
+      res.sendStatus(500)
+    })
   } else {
     res.sendStatus(403)
   }
 })
 
-app.post('/allow_domains', (req, res) => {
+
+app.post('/info', (req, res) => {
   if (Key === req.body.server_key) {
     res.header('Content-Type', 'application/json; charset=utf-8')
-    res.send(allowDomains)
+    res.send({users:0,allow_domains:allowDomains})
   } else {
     res.sendStatus(403)
   }
