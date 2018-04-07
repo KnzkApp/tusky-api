@@ -9,11 +9,12 @@ import dotenv from 'dotenv'
 
 dotenv.config();
 
-const app         = express()
-const serverKey   = process.env.SERVER_KEY || ''
-const port        = process.env.PORT || 3000
-const Key         = process.env.ACCESS_KEY
+const app          = express()
+const serverKey    = process.env.SERVER_KEY || ''
+const port         = process.env.PORT || 3000
+const Key          = process.env.ACCESS_KEY
 const allowDomains = process.env.ALLOW_DOMAINS
+const version      = "1.0.0";
 const wsStorage = {}
 const sequelize = new Sequelize('sqlite://apppush.sqlite', {
   logging: npmlog.verbose,
@@ -281,7 +282,7 @@ app.post('/register', (req, res) => {
 app.post('/info', (req, res) => {
   if (Key === req.body.server_key) {
     res.header('Content-Type', 'application/json; charset=utf-8')
-    res.send({users:0,allow_domains:allowDomains})
+    res.send({users:0,allow_domains:allowDomains,version:version})
   } else {
     res.sendStatus(403)
   }
