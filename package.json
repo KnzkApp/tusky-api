@@ -1,7 +1,7 @@
 {
-  "name": "tusky-api",
+  "name": "knzkapp-notification",
   "version": "1.0.0",
-  "description": "Push notification server for Tusky",
+  "description": "Push notification server for KnzkApp (forked from tusky-api)",
   "main": "index.js",
   "scripts": {
     "start": "babel-node ./index.js --presets es2015,stage-2"
