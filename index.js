@@ -280,7 +280,7 @@ app.post('/register', (req, res) => {
 
 
 app.post('/info', (req, res) => {
-  let is_auth = Key == req.body.server_key ? true : false;
+  let is_auth = Key === req.body.server_key ? true : false;
 
   res.header('Content-Type', 'application/json; charset=utf-8')
   res.send({users:0,allow_domains:allowDomains,version:version,is_auth:is_auth})
