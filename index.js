@@ -200,6 +200,22 @@ const Registration = sequelize.define('registration', {
   },
 
   filter: {
+    type: Sequelize.JSON
+  },
+
+  language: {
+    type: Sequelize.STRING
+  },
+
+  created_at: {
+    type: Sequelize.DATE
+  },
+
+  acct: {
+    type: Sequelize.STRING
+  },
+
+  mode: {
     type: Sequelize.STRING
   }
 })
