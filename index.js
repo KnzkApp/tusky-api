@@ -280,16 +280,10 @@ app.post('/register', (req, res) => {
 
 
 app.post('/info', (req, res) => {
-  if (Key === req.body.server_key) {
-    res.header('Content-Type', 'application/json; charset=utf-8')
-    res.send({users:0,allow_domains:allowDomains,version:version})
-  } else {
-    res.sendStatus(403)
-  }
-})
+  let is_auth = Key == req.body.server_key ? true : false;
 
-app.post('/ping', (req, res) => {
-  res.send(req.body)
+  res.header('Content-Type', 'application/json; charset=utf-8')
+  res.send({users:0,allow_domains:allowDomains,version:version,is_auth:is_auth})
 })
 
 app.post('/unregister', (req, res) => {
