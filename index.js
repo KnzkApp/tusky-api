@@ -13,7 +13,7 @@ const app          = express()
 const serverKey    = process.env.SERVER_KEY || ''
 const port         = process.env.PORT || 3000
 const Key          = process.env.ACCESS_KEY
-const allowDomains = JSON.parse(process.env.ALLOW_DOMAINS)
+//const allowDomains = JSON.parse(process.env.ALLOW_DOMAINS)
 const version      = "1.0.0";
 const wsStorage = {}
 const sequelize = new Sequelize('sqlite://apppush.sqlite', {
@@ -254,7 +254,7 @@ app.post('/register', (req, res) => {
 
   const date = new Date();
 
-  if (Key === req.body.server_key && allowDomains[req.body.instance_url] && req.body.device_token) {
+  if (Key === req.body.server_key && req.body.device_token) {
     axios.get('https://'+req.body.instance_url+'/api/v1/accounts/verify_credentials', {}, {
       headers: {
         'Authorization': `Bearer `+req.body.access_token,
@@ -286,7 +286,7 @@ app.post('/info', (req, res) => {
   let is_auth = Key === req.body.server_key ? true : false;
 
   res.header('Content-Type', 'application/json; charset=utf-8')
-  res.send({users:0,allow_domains:allowDomains,version:version,is_auth:is_auth})
+  res.send({users:0,version:version,is_auth:is_auth})
 })
 
 app.post('/unregister', (req, res) => {
