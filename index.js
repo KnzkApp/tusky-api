@@ -94,7 +94,7 @@ const connectForUser = (config, created_at, acct) => {
       let i = 0, match = "";
       while (send_option["keyword"][i]) {
         if (payload.content.match(new RegExp(send_option["keyword"][i], "g"))) {
-          log('info', `New keyword match: ${acct}`)
+          log('info', `New keyword match`)
           match = send_option["keyword"][i]
           break
         }
@@ -272,6 +272,7 @@ app.post('/register', (req, res) => {
 
       connectForUser(req.body, getdate, acct)
       res.sendStatus(201)
+      log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
     }).catch(error => {
       log('error', `Error verify_credentials, status: ${error.response.status}: ${JSON.stringify(error.response.data)}`)
       res.sendStatus(500)
