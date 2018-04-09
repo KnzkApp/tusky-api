@@ -272,9 +272,9 @@ app.post('/register', (req, res) => {
 
       connectForUser(req.body, getdate, acct)
       res.sendStatus(201)
-      log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
+      npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
     }).catch(error => {
-      log('error', `Error verify_credentials, status: ${error.response.status}: ${JSON.stringify(error.response.data)}`)
+      npmlog.log('error', `Error verify_credentials, status: ${error.response.status}: ${JSON.stringify(error.response.data)}`)
       res.sendStatus(500)
     })
   } else {
