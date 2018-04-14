@@ -76,7 +76,7 @@ const connectForUser = (config, created_at, acct) => {
       }
 
       if (language === "ja") {
-        text = "["+acct+"] "+payload["account"]["display_name"]+" さん ("+payload["account"]["acct"]+") があなた";
+        text = payload["account"]["display_name"]+" さん ("+payload["account"]["acct"]+") があなた";
         if (payload["type"] === "follow") { //フォロー
           text += "をフォローしました";
         } else if (payload["type"] === "mention") { //メンション
@@ -106,7 +106,7 @@ const connectForUser = (config, created_at, acct) => {
       }
 
       if (language === "ja") {
-        text = "["+acct+"] "+payload["account"]["display_name"]+" さん ("+payload["account"]["acct"]+") が["+match+"]を発言しました";
+        text = payload["account"]["display_name"]+" さん ("+payload["account"]["acct"]+") が["+match+"]を発言しました";
       } else {
         log('info', 'Not found language:'+language)
         return
@@ -120,7 +120,7 @@ const connectForUser = (config, created_at, acct) => {
     const firebaseMessage = {
       to: deviceToken,
       priority: 'high',
-      notification : {"title" : text}
+      notification : {"title" : acct, "body": text}
     }
 
     axios.post('https://fcm.googleapis.com/fcm/send', JSON.stringify(firebaseMessage), {
