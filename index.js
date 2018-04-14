@@ -248,6 +248,7 @@ app.get('/', (req, res) => {
 
 app.post('/register', (req, res) => {
   if (req.body.language !== "ja" && req.body.language !== "en") {
+    res.send({error:"言語が正しく設定されていません:"+req.body.language})
     res.sendStatus(406)
     return
   }
@@ -284,7 +285,7 @@ app.post('/register', (req, res) => {
 
 
 app.post('/info', (req, res) => {
-  let is_auth = Key === req.body.server_key ? true : false;
+  let is_auth = Key === req.body.server_key;
 
   res.header('Content-Type', 'application/json; charset=utf-8')
   res.send({users:0,version:version,is_auth:is_auth})
