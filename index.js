@@ -293,7 +293,7 @@ app.post('/info', (req, res) => {
 
 app.post('/unregister', (req, res) => {
   disconnectForUser(req.body.instance_url, req.body.access_token)
-  res.sendStatus(201)
+  res.send({ok:true})
 })
 
 app.listen(port, () => {
