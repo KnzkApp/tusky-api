@@ -25,7 +25,7 @@ const connectForUser = (config, created_at, acct) => {
   const baseUrl = config.instance_url || config.instanceUrl
     , accessToken = config.access_token || config.accessToken
     , deviceToken = config.device_token || config.deviceToken
-    , option = JSON.parse(config.option)
+    , option = config.option
     , language = config.language
 
   let nowDate = new Date();
