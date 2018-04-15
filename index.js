@@ -254,29 +254,19 @@ app.post('/register', (req, res) => {
 
   const date = new Date();
 
-  if (Key === req.body.server_key && req.body.device_token && req.body.option) {
-    axios.get('https://'+req.body.instance_url+'/api/v1/accounts/verify_credentials', {
-      headers: {
-        'Authorization': `Bearer `+req.body.access_token,
-        'Content-Type': 'application/json'
+  if (Key === req.body.server_key && req.body.device_token && req.body.option && req.body.acct) {
+    let getdate = date.getTime(), acct = encodeURIComponent(req.body.acct);
+
+    Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
+      if (registration != null) {
+        registration.destroy()
       }
-    }).then(response => {
-      let getdate = date.getTime(), acct = response.data.acct + "@" + req.body.instance_url;
-
-      Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
-        if (registration != null) {
-          registration.destroy()
-        }
-        Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
-      })
-
-      connectForUser(req.body, getdate, acct)
-      res.sendStatus(201)
-      npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
-    }).catch(error => {
-      npmlog.log('error', `Error verify_credentials, status: ${error.response.status}: ${JSON.stringify(error.response.data)}`)
-      res.sendStatus(500)
+      Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
     })
+
+    connectForUser(req.body, getdate, acct)
+    res.sendStatus(201)
+    npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
   } else {
     res.sendStatus(403)
   }
