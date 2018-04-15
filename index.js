@@ -278,7 +278,7 @@ app.post('/register', (req, res) => {
     })
 
     connectForUser(req.body, getdate, acct)
-    res.sendStatus(201)
+    res.send({ok:true})
     npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
   } else {
     res.sendStatus(403)
