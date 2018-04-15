@@ -57,6 +57,10 @@ const connectForUser = (config, created_at, acct) => {
     const json = JSON.parse(data)
     const payload = JSON.parse(json.payload)
 
+    if (json.event === 'delete') {
+      return
+    }
+
     let text = "";
     if (!payload.account.display_name) payload.account.display_name = payload.account.username
 
