@@ -128,7 +128,12 @@ const connectForUser = (config, created_at, acct) => {
     const firebaseMessage = {
       to: deviceToken,
       priority: 'high',
-      notification : {"title" : acct, "body": text}
+      notification : {
+        "title" : acct,
+        "body": text,
+        "icon": "fcm_push_icon",
+        "color": "#ffffff",
+      }
     }
 
     axios.post('https://fcm.googleapis.com/fcm/send', JSON.stringify(firebaseMessage), {
