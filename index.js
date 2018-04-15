@@ -255,7 +255,7 @@ app.post('/register', (req, res) => {
   const date = new Date();
 
   if (Key === req.body.server_key && req.body.device_token && req.body.option && req.body.acct) {
-    let getdate = date.getTime(), acct = encodeURIComponent(req.body.acct);
+    let getdate = date.getTime(), acct = encodeURIComponent(req.body.username)+"@"+req.body.instance_url;
 
     Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
       if (registration != null) {
