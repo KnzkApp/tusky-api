@@ -25,7 +25,7 @@ const connectForUser = (config, created_at, acct) => {
   const baseUrl = config.instance_url || config.instanceUrl
     , accessToken = config.access_token || config.accessToken
     , deviceToken = config.device_token || config.deviceToken
-    , option = config.option
+    , option = JSON.parse(config.option)
     , language = config.language
 
   let nowDate = new Date();
@@ -217,7 +217,7 @@ const Registration = sequelize.define('registration', {
   },
 
   option: {
-    type: Sequelize.JSON
+    type: Sequelize.STRING
   },
 
   language: {
@@ -262,7 +262,6 @@ app.post('/register', (req, res) => {
       }
     }).then(response => {
       let getdate = date.getTime(), acct = response.data.acct + "@" + req.body.instance_url;
-      req.body.option = JSON.parse(req.body.option)
 
       Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
         if (registration != null) {
