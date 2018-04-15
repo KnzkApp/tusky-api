@@ -80,7 +80,11 @@ const connectForUser = (config, created_at, acct) => {
       }
 
       if (language === "ja") {
-        text = payload["account"]["display_name"]+" さん ("+payload["account"]["acct"]+") があなた";
+        text = payload["account"]["display_name"]+" さん";
+        if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
+          text = " ("+payload["account"]["acct"]+")";
+        }
+        text += " があなた";
         if (payload["type"] === "follow") { //フォロー
           text += "をフォローしました";
         } else if (payload["type"] === "mention") { //メンション
