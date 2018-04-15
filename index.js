@@ -167,7 +167,7 @@ const connectForUser = (config, created_at, acct) => {
   const reconnect = () => {
     clearInterval(heartbeat)
 
-    const ws = new WebSocket(`${baseUrl}/api/v1/streaming/?access_token=${accessToken}&stream=user`)
+    const ws = new WebSocket(`https://${baseUrl}/api/v1/streaming/?access_token=${accessToken}&stream=user`)
 
     ws.on('open', () => {
       if (ws.readyState != 1) {
