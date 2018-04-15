@@ -248,14 +248,13 @@ app.get('/', (req, res) => {
 
 app.post('/register', (req, res) => {
   if (req.body.language !== "ja" && req.body.language !== "en") {
-    res.send({error:"言語が正しく設定されていません:"+req.body.language})
     res.sendStatus(406)
     return
   }
 
   const date = new Date();
 
-  if (Key === req.body.server_key && req.body.device_token) {
+  if (Key === req.body.server_key && req.body.device_token && req.body.option) {
     axios.get('https://'+req.body.instance_url+'/api/v1/accounts/verify_credentials', {
       headers: {
         'Authorization': `Bearer `+req.body.access_token,
@@ -263,6 +262,7 @@ app.post('/register', (req, res) => {
       }
     }).then(response => {
       let getdate = date.getTime(), acct = response.data.acct + "@" + req.body.instance_url;
+      req.body.option = JSON.parse(req.body.option)
 
       Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
         if (registration != null) {
