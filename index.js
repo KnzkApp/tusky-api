@@ -35,9 +35,8 @@ const connectForUser = (config, created_at, acct) => {
     return
   }
 
-
-  const send_option = JSON.parse(option);
   const log = (level, message) => npmlog.log(level, `${baseUrl}:${deviceToken}`, message)
+  const send_option = JSON.parse(option);
 
   if (typeof wsStorage[`${baseUrl}:${accessToken}`] !== 'undefined') {
     log('info', 'Already registered')
@@ -63,6 +62,10 @@ const connectForUser = (config, created_at, acct) => {
 
     let text = "";
     if (!payload.account.display_name) payload.account.display_name = payload.account.username
+    text = payload["account"]["display_name"]+" さん";
+    if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
+      text += " (@"+payload["account"]["acct"]+")";
+    }
 
     if (json.event === 'notification') {
       log('info', `New notification: ${json.event}`)
@@ -80,10 +83,6 @@ const connectForUser = (config, created_at, acct) => {
       }
 
       if (language === "ja") {
-        text = payload["account"]["display_name"]+" さん";
-        if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
-          text = " ("+payload["account"]["acct"]+")";
-        }
         text += " があなた";
         if (payload["type"] === "follow") { //フォロー
           text += "をフォローしました";
@@ -114,7 +113,7 @@ const connectForUser = (config, created_at, acct) => {
       }
 
       if (language === "ja") {
-        text = payload["account"]["display_name"]+" さん ("+payload["account"]["acct"]+") が["+match+"]を発言しました";
+        text += " が「"+match+"」を発言しました";
       } else {
         log('info', 'Not found language:'+language)
         return
@@ -131,7 +130,7 @@ const connectForUser = (config, created_at, acct) => {
       notification : {
         "title" : acct,
         "body": text,
-        "icon": "fcm_push_icon",
+        "icon": "xxxhdpi",
         "color": "#ffffff",
       }
     }
