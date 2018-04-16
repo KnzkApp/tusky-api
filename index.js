@@ -98,6 +98,10 @@ const connectForUser = (config, created_at, acct) => {
         return
       }
     } else if (json.event === 'update') {
+      if (payload["account"]["acct"]+"@"+config.instance_url === acct) {
+        return
+      }
+
       let i = 0, match = "";
       while (send_option["keyword"][i]) {
         if (payload.content.match(new RegExp(send_option["keyword"][i], "g"))) {
