@@ -98,7 +98,7 @@ const connectForUser = (config, created_at, acct) => {
         return
       }
     } else if (json.event === 'update') {
-      if (payload["account"]["acct"]+"@"+config.instance_url === acct) {
+      if (payload["account"]["acct"]+"@"+config.instance_url === acct || payload["visibility"] !== "direct") {
         return
       }
 
