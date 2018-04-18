@@ -222,6 +222,22 @@ const disconnectForUser = (baseUrl, accessToken) => {
   }
 }
 
+async function deleteData(baseUrl, accessToken) {
+  Registration.findOne({ where: { instanceUrl: baseUrl, accessToken: accessToken }}).then((registration) => {
+    if (registration != null) {
+      registration.destroy()
+      const ws = wsStorage[`${baseUrl}:${accessToken}`]
+      if (typeof ws !== 'undefined') {
+        ws.close()
+        delete wsStorage[`${baseUrl}:${accessToken}`]
+      }
+      return true;
+    } else {
+      return false;
+    }
+  })
+}
+
 const Registration = sequelize.define('registration', {
   instanceUrl: {
     type: Sequelize.STRING
@@ -276,16 +292,15 @@ app.post('/register', (req, res) => {
   if (Key === req.body.server_key && req.body.device_token && req.body.option && req.body.username) {
     let getdate = date.getTime(), acct = encodeURIComponent(req.body.username)+"@"+req.body.instance_url;
 
-    Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
-      if (registration != null) {
-        registration.destroy()
-        npmlog.log('info', `Data Update: ${req.body.instance_url} / ${req.body.app_name}`)
+    deleteData(req.body.instance_url, req.body.access_token).then(re => {
+      if (re) {
+        npmlog.log('info', `Update data: ${req.body.instance_url} / ${req.body.app_name}`)
       }
       Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
       connectForUser(req.body, getdate, acct)
       res.send({ok:true})
       npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
-    })
+    });
   } else {
     res.sendStatus(403)
   }
