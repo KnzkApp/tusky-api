@@ -296,10 +296,12 @@ app.post('/register', (req, res) => {
       if (re) {
         npmlog.log('info', `Update data: ${req.body.instance_url} / ${req.body.app_name}`)
       }
-      Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
-      connectForUser(req.body, getdate, acct)
-      res.send({ok:true})
-      npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
+      setTimeout(function () {
+        Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
+        connectForUser(req.body, getdate, acct)
+        res.send({ok:true})
+        npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
+      }, 50)
     });
   } else {
     res.sendStatus(403)
