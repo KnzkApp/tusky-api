@@ -14,7 +14,7 @@ const serverKey    = process.env.SERVER_KEY || ''
 const port         = process.env.PORT || 3000
 const Key          = process.env.ACCESS_KEY
 //const allowDomains = JSON.parse(process.env.ALLOW_DOMAINS)
-const version      = "1.0.0";
+const version      = "v1";
 const wsStorage = {}
 const sequelize = new Sequelize('sqlite://apppush.sqlite', {
   logging: npmlog.verbose,
@@ -70,8 +70,8 @@ const connectForUser = (config, created_at, acct) => {
     if (json.event === 'notification') {
       log('info', `New notification: ${json.event}`)
 
-      if (!send_option["notification"]["user"][payload.acct]) {
-        send_option["notification"]["user"][payload.acct] = {}
+      if (!send_option["notification"]["user"][acct_s]) {
+        send_option["notification"]["user"][acct_s] = {}
       }
 
       if ((payload.type === "follow" && (send_option["notification"]["all"]["follow"] || send_option["notification"]["user"][acct_s]["follow"])) ||
