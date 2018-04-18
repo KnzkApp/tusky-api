@@ -296,7 +296,9 @@ app.post('/info', (req, res) => {
   let is_auth = Key === req.body.server_key;
 
   res.header('Content-Type', 'application/json; charset=utf-8')
-  res.send({users:0,version:version,is_auth:is_auth})
+  Registration.count().then(c => {
+    res.send({users:c,version:version,is_auth:is_auth})
+  })
 })
 
 app.post('/unregister', (req, res) => {
