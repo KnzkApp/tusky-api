@@ -279,6 +279,7 @@ app.post('/register', (req, res) => {
     Registration.findOne({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token }}).then((registration) => {
       if (registration != null) {
         registration.destroy()
+        npmlog.log('info', `Data Update: ${req.body.instance_url} / ${req.body.app_name}`)
       }
       Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
       connectForUser(req.body, getdate, acct)
