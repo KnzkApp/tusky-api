@@ -66,7 +66,7 @@ const connectForUser = (config, created_at, acct) => {
     if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
       text += " (@"+payload["account"]["acct"]+")";
     }
-    
+
     if (!send_option["notification"]["user"][acct_s]) {
       send_option["notification"]["user"][acct_s] = {}
     }
@@ -281,11 +281,10 @@ app.post('/register', (req, res) => {
         registration.destroy()
       }
       Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
+      connectForUser(req.body, getdate, acct)
+      res.send({ok:true})
+      npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
     })
-
-    connectForUser(req.body, getdate, acct)
-    res.send({ok:true})
-    npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
   } else {
     res.sendStatus(403)
   }
