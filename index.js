@@ -6,6 +6,7 @@ import npmlog from 'npmlog'
 import morgan from 'morgan'
 import Sequelize from 'sequelize'
 import dotenv from 'dotenv'
+import crypto from 'crypto'
 
 dotenv.config();
 
@@ -14,20 +15,20 @@ const serverKey    = process.env.SERVER_KEY || ''
 const port         = process.env.PORT || 3000
 const Key          = process.env.ACCESS_KEY
 //const allowDomains = JSON.parse(process.env.ALLOW_DOMAINS)
-const version      = "1.0.0";
+const version      = "v1";
 const wsStorage = {}
 const sequelize = new Sequelize('sqlite://apppush.sqlite', {
   logging: npmlog.verbose,
   storage: 'db/apppush.sqlite'
 })
+const algorithm = 'aes-256-ctr', password = process.env.SECRET_KEY
 
 const connectForUser = (config, created_at, acct) => {
   const baseUrl = config.instance_url || config.instanceUrl
-    , accessToken = config.access_token || config.accessToken
+    , accessToken = decrypt(config.access_token || config.accessToken)
     , deviceToken = config.device_token || config.deviceToken
     , option = config.option
     , language = config.language
-
   let nowDate = new Date();
   nowDate.setDate(nowDate.getDate() + 7);
   if (created_at > nowDate.getTime()) { //有効期限過ぎた
@@ -280,6 +281,8 @@ app.post('/register', (req, res) => {
       if (registration != null) {
         registration.destroy()
       }
+      req.body.access_token = encrypt(req.body.access_token)
+
       Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
     })
 
@@ -309,3 +312,17 @@ app.post('/unregister', (req, res) => {
 app.listen(port, () => {
   npmlog.log('info', `Listening on port ${port}`)
 })
+
+function encrypt(text) {
+  var cipher = crypto.createCipher(algorithm,password)
+  var crypted = cipher.update(text,'utf8','hex')
+  crypted += cipher.final('hex');
+  return crypted;
+}
+
+function decrypt(text) {
+  var decipher = crypto.createDecipher(algorithm,password)
+  var dec = decipher.update(text,'hex','utf8')
+  dec += decipher.final('utf8');
+  return dec;
+}
