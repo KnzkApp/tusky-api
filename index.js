@@ -66,13 +66,13 @@ const connectForUser = (config, created_at, acct) => {
     if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
       text += " (@"+payload["account"]["acct"]+")";
     }
+    
+    if (!send_option["notification"]["user"][acct_s]) {
+      send_option["notification"]["user"][acct_s] = {}
+    }
 
     if (json.event === 'notification') {
       log('info', `New notification: ${json.event}`)
-
-      if (!send_option["notification"]["user"][acct_s]) {
-        send_option["notification"]["user"][acct_s] = {}
-      }
 
       if ((payload.type === "follow" && (send_option["notification"]["all"]["follow"] || send_option["notification"]["user"][acct_s]["follow"])) ||
         (payload.type === "mention" && (send_option["notification"]["all"]["mention"] || send_option["notification"]["user"][acct_s]["mention"])) ||
