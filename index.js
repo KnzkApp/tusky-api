@@ -60,7 +60,7 @@ const connectForUser = (config, created_at, acct) => {
       return
     }
 
-    let text = "";
+    let text = "", acct_s = (payload['account']['acct'].indexOf("@") === -1 ? payload['account']['acct'] + "@" + config.instance_url : payload['account']['acct']).toLowerCase();
     if (!payload.account.display_name) payload.account.display_name = payload.account.username
     text = payload["account"]["display_name"]+" さん";
     if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
@@ -74,11 +74,11 @@ const connectForUser = (config, created_at, acct) => {
         send_option["notification"]["user"][payload.acct] = {}
       }
 
-      if ((payload.type === "follow" && (send_option["notification"]["all"]["follow"] || send_option["notification"]["user"][payload.acct]["follow"])) ||
-        (payload.type === "mention" && (send_option["notification"]["all"]["mention"] || send_option["notification"]["user"][payload.acct]["mention"])) ||
-        (payload.type === "reblog" && (send_option["notification"]["all"]["reblog"] || send_option["notification"]["user"][payload.acct]["reblog"])) ||
-        (payload.type === "favourite" && (send_option["notification"]["all"]["favourite"] || send_option["notification"]["user"][payload.acct]["favourite"])) ||
-        send_option["notification"]["user"][payload.acct]["all"]) {
+      if ((payload.type === "follow" && (send_option["notification"]["all"]["follow"] || send_option["notification"]["user"][acct_s]["follow"])) ||
+        (payload.type === "mention" && (send_option["notification"]["all"]["mention"] || send_option["notification"]["user"][acct_s]["mention"])) ||
+        (payload.type === "reblog" && (send_option["notification"]["all"]["reblog"] || send_option["notification"]["user"][acct_s]["reblog"])) ||
+        (payload.type === "favourite" && (send_option["notification"]["all"]["favourite"] || send_option["notification"]["user"][acct_s]["favourite"])) ||
+        send_option["notification"]["user"][acct_s]["all"]) {
         return
       }
 
@@ -98,7 +98,10 @@ const connectForUser = (config, created_at, acct) => {
         return
       }
     } else if (json.event === 'update') {
-      if (payload["account"]["acct"]+"@"+config.instance_url === acct || payload["visibility"] !== "direct") {
+      if (payload["account"]["acct"]+"@"+config.instance_url === acct ||
+        payload["visibility"] === "direct" ||
+        send_option["notification"]["user"][acct_s]["all"] ||
+        send_option["notification"]["user"][acct_s]["keyword"]) {
         return
       }
 
