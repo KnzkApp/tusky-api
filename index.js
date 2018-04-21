@@ -35,7 +35,7 @@ const connectForUser = (config, created_at, acct) => {
     return
   }
 
-  const log = (level, message) => npmlog.log(level, `${baseUrl}:${deviceToken}`, message)
+  const log = (level, message) => npmlog.log(level, `${baseUrl}:${acct}`, message)
   const send_option = JSON.parse(option);
 
   if (typeof wsStorage[`${baseUrl}:${accessToken}`] !== 'undefined') {
