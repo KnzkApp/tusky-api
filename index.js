@@ -138,8 +138,8 @@ const connectForUser = (config, created_at, acct) => {
       notification : {
         "title" : acct,
         "body": text,
-        "icon": "fcm_push_icon",
-        "color": "#ffffff",
+        //"icon": "fcm_push_icon",
+        "color": "#ffffff"
       }
     }
 
