@@ -101,7 +101,8 @@ const connectForUser = (config, created_at, acct) => {
       if (payload["account"]["acct"]+"@"+config.instance_url === acct ||
         payload["visibility"] === "direct" ||
         send_option["notification"]["user"][acct_s]["all"] ||
-        send_option["notification"]["user"][acct_s]["keyword"]) {
+        send_option["notification"]["user"][acct_s]["keyword"] ||
+        payload["reblog"]) {
         return
       }
 
