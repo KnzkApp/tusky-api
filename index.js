@@ -28,13 +28,6 @@ const connectForUser = (config, created_at, acct) => {
     , option = config.option
     , language = config.language
 
-  let nowDate = new Date();
-  nowDate.setDate(nowDate.getDate() + 7);
-  if (created_at > nowDate.getTime()) { //有効期限過ぎた
-    disconnectForUser(baseUrl, accessToken)
-    return
-  }
-
   const log = (level, message) => npmlog.log(level, `${baseUrl}:${acct}`, message)
   const send_option = JSON.parse(option);
 
@@ -43,7 +36,7 @@ const connectForUser = (config, created_at, acct) => {
     return
   }
 
-  let heartbeat
+  let heartbeat, Error = 0
 
   log('info', 'New registration')
 
@@ -53,6 +46,13 @@ const connectForUser = (config, created_at, acct) => {
   }
 
   const onMessage = data => {
+    let nowDate = new Date();
+    nowDate.setDate(nowDate.getDate() + 7);
+    if (created_at > nowDate.getTime()) { //有効期限過ぎた
+      disconnectForUser(baseUrl, accessToken)
+      return
+    }
+
     const json = JSON.parse(data)
     const payload = JSON.parse(json.payload)
 
@@ -168,8 +168,9 @@ const connectForUser = (config, created_at, acct) => {
   }
 
   const onError = error => {
+    Error++;
     log('error', error)
-    setTimeout(() => reconnect(), 5000)
+    setTimeout(() => reconnect(), 100000)
   }
 
   const onClose = code => {
@@ -181,7 +182,13 @@ const connectForUser = (config, created_at, acct) => {
     }
 
     log('error', `Unexpected close: ${code}`)
-    setTimeout(() => reconnect(), 5000)
+    Error++;
+    if (Error > 10) {
+      log('error', `Forcibly delete!!`)
+      disconnectForUser(baseUrl, accessToken)
+    } else {
+      setTimeout(() => reconnect(), 60000)
+    }
   }
 
   const reconnect = () => {
