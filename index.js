@@ -9,49 +9,62 @@ import dotenv from 'dotenv'
 
 dotenv.config();
 
-const app          = express()
-const serverKey    = process.env.SERVER_KEY || ''
-const port         = process.env.PORT || 3000
-const Key          = process.env.ACCESS_KEY
+const app = express()
+const serverKey = process.env.SERVER_KEY || ''
+const port = process.env.PORT || 3000
+const Key = process.env.ACCESS_KEY
 //const allowDomains = JSON.parse(process.env.ALLOW_DOMAINS)
-const version      = "v1";
-const wsStorage = {}
+const version = "v1";
+const wsStorage = {};
 const sequelize = new Sequelize('sqlite://apppush.sqlite', {
   logging: npmlog.verbose,
   storage: 'db/apppush.sqlite'
 })
+let ErrorCount = {};
+let SessionState = {};
 
-const connectForUser = (config, created_at, acct) => {
+const connectForUser = (config) => {
   const baseUrl = config.instance_url || config.instanceUrl
     , accessToken = config.access_token || config.accessToken
     , deviceToken = config.device_token || config.deviceToken
     , option = config.option
     , language = config.language
+    , acct = config.acct
+    , created_at = config.updatedAt ? config.updatedAt.getTime : config.created_at;
 
-  const log = (level, message) => npmlog.log(level, `${baseUrl}:${acct}`, message)
+  const log = (level, message) => npmlog.log(level, `${acct}`, message)
   const send_option = JSON.parse(option);
 
-  if (typeof wsStorage[`${baseUrl}:${accessToken}`] !== 'undefined') {
+  if (typeof wsStorage[`${acct}`] !== 'undefined') {
     log('info', 'Already registered')
-    return
+    return;
   }
 
-  let heartbeat, Error = 0
+  let heartbeat;
+  SessionState[`${acct}`] = null;
+
+  if (!ErrorCount[`${acct}`]) ErrorCount[`${acct}`] = 0;
+  if (ErrorCount[`${acct}`] > 10) {
+    log('error', `Forcibly delete!!`)
+    disconnectForUser(baseUrl, acct)
+  }
 
   log('info', 'New registration')
 
   const close = () => {
     clearInterval(heartbeat)
-    disconnectForUser(baseUrl, accessToken)
+    if (SessionState[`${acct}`] !== "reload") disconnectForUser(baseUrl, acct)
   }
 
   const onMessage = data => {
+    /*
     let nowDate = new Date();
     nowDate.setDate(nowDate.getDate() + 7);
     if (created_at > nowDate.getTime()) { //有効期限過ぎた
-      disconnectForUser(baseUrl, accessToken)
+      disconnectForUser(baseUrl, acct)
       return
     }
+    */
 
     const json = JSON.parse(data)
     const payload = JSON.parse(json.payload)
@@ -62,9 +75,9 @@ const connectForUser = (config, created_at, acct) => {
 
     let text = "", acct_s = (payload['account']['acct'].indexOf("@") === -1 ? payload['account']['acct'] + "@" + config.instance_url : payload['account']['acct']).toLowerCase();
     if (!payload.account.display_name) payload.account.display_name = payload.account.username
-    text = payload["account"]["display_name"]+" さん";
+    text = payload["account"]["display_name"] + " さん";
     if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
-      text += " (@"+payload["account"]["acct"]+")";
+      text += " (@" + payload["account"]["acct"] + ")";
     }
 
     if (!send_option["notification"]["user"][acct_s]) {
@@ -83,22 +96,18 @@ const connectForUser = (config, created_at, acct) => {
       }
 
       if (language === "ja") {
-        text += " があなた";
-        if (payload["type"] === "follow") { //フォロー
-          text += "をフォローしました";
-        } else if (payload["type"] === "mention") { //メンション
-          text += "にメンションしました";
-        } else if (payload["type"] === "reblog") { //ブースト
-          text += "の投稿をブーストしました";
-        } else if (payload["type"] === "favourite") { //お気に入り
-          text += "の投稿をお気に入りしました";
-        }
+        text += " が";
+
+        text += payload["type"] === "follow" ? "フォロー" :
+          payload["type"] === "mention" ? "メンション" :
+            payload["type"] === "reblog" ? "ブースト" :
+              payload["type"] === "favourite" ? "お気に入り" : "";
       } else {
-        log('info', 'Not found language:'+language)
+        log('info', 'Not found language:' + language)
         return
       }
     } else if (json.event === 'update') {
-      if (payload["account"]["acct"]+"@"+config.instance_url === acct ||
+      if (payload["account"]["acct"] + "@" + config.instance_url === acct ||
         payload["visibility"] === "direct" ||
         send_option["notification"]["user"][acct_s]["all"] ||
         send_option["notification"]["user"][acct_s]["keyword"] ||
@@ -121,9 +130,9 @@ const connectForUser = (config, created_at, acct) => {
       }
 
       if (language === "ja") {
-        text += " が「"+match+"」を発言しました";
+        text += " が「" + match + "」を発言";
       } else {
-        log('info', 'Not found language:'+language)
+        log('info', 'Not found language:' + language)
         return
       }
     }
@@ -135,8 +144,8 @@ const connectForUser = (config, created_at, acct) => {
     const firebaseMessage = {
       to: deviceToken,
       priority: 'high',
-      notification : {
-        "title" : acct,
+      notification: {
+        "title": acct,
         "body": text,
         //"icon": "fcm_push_icon",
         "color": "#ffffff"
@@ -157,7 +166,7 @@ const connectForUser = (config, created_at, acct) => {
 
       response.data.results.forEach(result => {
         if (result.message_id && result.registration_id) {
-          Registration.findOne({ where: { instanceUrl: baseUrl, accessToken: accessToken }}).then(registration => registration.update({ deviceToken: result.registration_id }))
+          Registration.findOne({ where: { instanceUrl: baseUrl, acct: acct } }).then(registration => registration.update({ deviceToken: result.registration_id }))
         } else if (result.error === 'NotRegistered') {
           close()
         }
@@ -168,27 +177,23 @@ const connectForUser = (config, created_at, acct) => {
   }
 
   const onError = error => {
-    Error++;
+    ErrorCount[`${acct}`]++;
     log('error', error)
     setTimeout(() => reconnect(), 100000)
   }
 
   const onClose = code => {
     if (code === 1000) {
-      log('info', 'Remote server closed connection')
+      if (SessionState[`${acct}`] === "reload") log('info', 'Restart connection')
+      else log('info', 'Remote server closed connection')
       clearInterval(heartbeat)
       close()
       return
     }
 
+    ErrorCount[`${acct}`]++;
     log('error', `Unexpected close: ${code}`)
-    Error++;
-    if (Error > 10) {
-      log('error', `Forcibly delete!!`)
-      disconnectForUser(baseUrl, accessToken)
-    } else {
-      setTimeout(() => reconnect(), 60000)
-    }
+    setTimeout(() => reconnect(), 60000)
   }
 
   const reconnect = () => {
@@ -201,7 +206,11 @@ const connectForUser = (config, created_at, acct) => {
         log('error', `Client state is: ${ws.readyState}`)
       } else {
         log('info', 'Connected')
-        heartbeat = setInterval(() => ws.ping(), 1000)
+        try {
+          heartbeat = setInterval(() => ws.ping(), 1000)
+        } catch (e) {
+          log('error', `Failed to create heartbeat`)
+        }
       }
     })
 
@@ -209,42 +218,62 @@ const connectForUser = (config, created_at, acct) => {
     ws.on('error', onError)
     ws.on('close', onClose)
 
-    wsStorage[`${baseUrl}:${accessToken}`] = ws;
+    wsStorage[`${acct}`] = ws;
   }
 
   reconnect()
 }
 
-const disconnectForUser = (baseUrl, accessToken) => {
-  Registration.findOne({ where: { instanceUrl: baseUrl, accessToken: accessToken }}).then((registration) => {
+const disconnectForUser = (baseUrl, acct) => {
+  Registration.findOne({ where: { instanceUrl: baseUrl, acct: acct } }).then((registration) => {
     if (registration != null) {
       registration.destroy()
     }
   })
 
-  const ws = wsStorage[`${baseUrl}:${accessToken}`]
+  const ws = wsStorage[`${acct}`]
+  ErrorCount[`${acct}`] = 0;
 
   if (typeof ws !== 'undefined') {
     ws.close()
-    delete wsStorage[`${baseUrl}:${accessToken}`]
+    delete wsStorage[`${acct}`]
   }
 }
 
-async function deleteData(baseUrl, accessToken) {
-  Registration.findOne({ where: { instanceUrl: baseUrl, accessToken: accessToken }}).then((registration) => {
-    if (registration != null) {
-      registration.destroy()
-      const ws = wsStorage[`${baseUrl}:${accessToken}`]
-      if (typeof ws !== 'undefined') {
-        ws.close()
-        delete wsStorage[`${baseUrl}:${accessToken}`]
-      }
-      return true;
-    } else {
-      return false;
-    }
-  })
+async function disconnect(acct) {
+  const ws = wsStorage[`${acct}`]
+  ErrorCount[`${acct}`] = 0;
+
+  if (typeof ws !== 'undefined') {
+    SessionState[`${acct}`] = "reload";
+    ws.close()
+    delete wsStorage[`${acct}`]
+  }
+  return;
 }
+
+const getUserAcct = (baseUrl, accessToken) => new Promise((resolve, reject) => {
+  axios.get(`https://${baseUrl}/api/v1/accounts/verify_credentials`, {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    }
+  }).then(response => {
+    if (response.data) {
+      if (response.data.acct) {
+        resolve((response.data.acct.toLowerCase()) + "@" + baseUrl);
+      } else {
+        throw response;
+      }
+    } else {
+      throw response;
+    }
+  }).catch(error => {
+    const err = error.response ? error.response : error;
+    log('error', `Failed to account information ${baseUrl}:${error.response.status}: ${JSON.stringify(error.response.data)}`)
+    resolve(undefined);
+  })
+});
 
 const Registration = sequelize.define('registration', {
   instanceUrl: {
@@ -267,19 +296,21 @@ const Registration = sequelize.define('registration', {
     type: Sequelize.STRING
   },
 
-  created_at: {
-    type: Sequelize.DATE
-  },
-
   acct: {
     type: Sequelize.STRING
+  },
+
+  updatedAt: {
+    type: Sequelize.DATE
   }
-})
+}, {
+    updatedAt: false
+  })
 
 Registration.sync()
   .then(() => Registration.findAll())
   .then(registrations => registrations.forEach(registration => {
-    connectForUser(registration, registration.created_at, registration.acct)
+    connectForUser(registration)
   }))
 
 app.use(morgan('combined'));
@@ -295,21 +326,31 @@ app.post('/register', (req, res) => {
     return
   }
 
-  const date = new Date();
+  if (Key === req.body.server_key && req.body.device_token && req.body.option) {
+    getUserAcct(req.body.instance_url, req.body.access_token).then(acct => {
+      if (acct) {
+        Registration.findOne({ where: { instanceUrl: req.body.instance_url, acct: acct } }).then(bef_data => {
+          req.body.acct = acct;
+          req.body.created_at = (new Date()).getTime();
 
-  if (Key === req.body.server_key && req.body.device_token && req.body.option && req.body.username) {
-    let getdate = date.getTime(), acct = encodeURIComponent(req.body.username)+"@"+req.body.instance_url;
-
-    deleteData(req.body.instance_url, req.body.access_token).then(re => {
-      if (re) {
-        npmlog.log('info', `Update data: ${req.body.instance_url} / ${req.body.app_name}`)
+          if (bef_data) { //アプデ
+            npmlog.log('info', `Update data: ${acct} / ${req.body.app_name}`);
+            bef_data.update({ accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, updatedAt: req.body.created_at });
+            disconnect(acct).then(re => {
+              setTimeout(function () {
+                connectForUser(req.body)
+              }, 50);
+            });
+          } else { //新規
+            npmlog.log('info', `New user: ${acct} / ${req.body.app_name}`);
+            Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, acct: acct, updatedAt: req.body.created_at } })
+            connectForUser(req.body);
+          }
+          res.send({ ok: true });
+        });
+      } else {
+        res.sendStatus(403)
       }
-      setTimeout(function () {
-        Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, created_at: getdate, acct: acct }})
-        connectForUser(req.body, getdate, acct)
-        res.send({ok:true})
-        npmlog.log('info', `New user: ${req.body.instance_url} / ${req.body.app_name}`)
-      }, 50)
     });
   } else {
     res.sendStatus(403)
@@ -322,13 +363,19 @@ app.post('/info', (req, res) => {
 
   res.header('Content-Type', 'application/json; charset=utf-8')
   Registration.count().then(c => {
-    res.send({users:c,version:version,is_auth:is_auth})
+    res.send({ users: c, version: version, is_auth: is_auth })
   })
 })
 
 app.post('/unregister', (req, res) => {
-  disconnectForUser(req.body.instance_url, req.body.access_token)
-  res.send({ok:true})
+  getUserAcct(req.body.instance_url, req.body.access_token).then(acct => {
+    if (acct) {
+      disconnectForUser(req.body.instance_url, acct);
+      res.send({ ok: true })
+    } else {
+      res.sendStatus(404);
+    }
+  });
 })
 
 app.listen(port, () => {
