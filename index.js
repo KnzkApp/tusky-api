@@ -75,15 +75,16 @@ const connectForUser = (config) => {
 
     let text = "", acct_s = (payload['account']['acct'].indexOf("@") === -1 ? payload['account']['acct'] + "@" + config.instance_url : payload['account']['acct']).toLowerCase();
     if (!payload.account.display_name) payload.account.display_name = payload.account.username
-    text = payload["account"]["display_name"] + " さん";
+    text = payload["account"]["display_name"];
     if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
-      text += " (@" + payload["account"]["acct"] + ")";
+      text += " (@" + payload["account"]["acct"] + ") ";
     }
 
     if (!send_option["notification"]["user"][acct_s]) {
       send_option["notification"]["user"][acct_s] = {}
     }
 
+    var notification_mode = "";
     if (json.event === 'notification') {
       log('info', `New notification: ${json.event}`)
 
@@ -96,16 +97,22 @@ const connectForUser = (config) => {
       }
 
       if (language === "ja") {
-        text += " が";
+        text += "が";
 
         text += payload["type"] === "follow" ? "フォロー" :
           payload["type"] === "mention" ? "メンション" :
             payload["type"] === "reblog" ? "ブースト" :
               payload["type"] === "favourite" ? "お気に入り" : "";
+      } else if (language === "en") {
+        text += payload["type"] === "follow" ? "followed you" :
+          payload["type"] === "mention" ? "mentioned you" :
+            payload["type"] === "reblog" ? "boosted your status" :
+              payload["type"] === "favourite" ? "favorited your status" : "";
       } else {
         log('info', 'Not found language:' + language)
         return
       }
+      notification_mode = payload["type"];
     } else if (json.event === 'update') {
       if (payload["account"]["acct"] + "@" + config.instance_url === acct ||
         payload["visibility"] === "direct" ||
@@ -131,10 +138,13 @@ const connectForUser = (config) => {
 
       if (language === "ja") {
         text += " が「" + match + "」を発言";
+      } else if (language === "en") {
+        text += " said \"" + match + "\"";
       } else {
         log('info', 'Not found language:' + language)
         return
       }
+      notification_mode = "keyword";
     }
 
     if (!text) {
@@ -147,7 +157,7 @@ const connectForUser = (config) => {
       notification: {
         "title": acct,
         "body": text,
-        //"icon": "fcm_push_icon",
+        "icon": "fcm_" + notification_mode,
         "color": "#ffffff"
       }
     }
