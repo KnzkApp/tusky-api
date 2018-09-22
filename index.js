@@ -42,13 +42,7 @@ const connectForUser = (config) => {
 
   let heartbeat;
   SessionState[`${acct}`] = null;
-
-  if (!ErrorCount[`${acct}`]) ErrorCount[`${acct}`] = 0;
-  if (ErrorCount[`${acct}`] > 10) {
-    log('error', `Forcibly delete!!`)
-    disconnectForUser(baseUrl, acct)
-  }
-
+  ErrorCount[`${acct}`] = 0;
   log('info', 'New registration')
 
   const close = () => {
@@ -187,8 +181,8 @@ const connectForUser = (config) => {
   }
 
   const onError = error => {
-    ErrorCount[`${acct}`]++;
-    log('error', error)
+    updateErrorCount(baseUrl, acct);
+    log('error', error);
     setTimeout(() => reconnect(), 100000)
   }
 
@@ -201,7 +195,7 @@ const connectForUser = (config) => {
       return
     }
 
-    ErrorCount[`${acct}`]++;
+    updateErrorCount(baseUrl, acct);
     log('error', `Unexpected close: ${code}`)
     setTimeout(() => reconnect(), 60000)
   }
@@ -242,7 +236,7 @@ const disconnectForUser = (baseUrl, acct) => {
   })
 
   const ws = wsStorage[`${acct}`]
-  ErrorCount[`${acct}`] = 0;
+  updateErrorCount(null, acct, true);
 
   if (typeof ws !== 'undefined') {
     ws.close()
@@ -252,7 +246,7 @@ const disconnectForUser = (baseUrl, acct) => {
 
 async function disconnect(acct) {
   const ws = wsStorage[`${acct}`]
-  ErrorCount[`${acct}`] = 0;
+  updateErrorCount(null, acct, true);
 
   if (typeof ws !== 'undefined') {
     SessionState[`${acct}`] = "reload";
@@ -260,6 +254,16 @@ async function disconnect(acct) {
     delete wsStorage[`${acct}`]
   }
   return;
+}
+
+function updateErrorCount(baseUrl, acct, mode) {
+  if (!ErrorCount[`${acct}`]) ErrorCount[`${acct}`] = 0;
+  ErrorCount[`${acct}`] = mode ? 0 : ErrorCount[`${acct}`] + 1;
+  npmlog.log(`info`, `${acct}`, "Update ErrorCount: " + ErrorCount[`${acct}`]);
+  if (ErrorCount[`${acct}`] >= 3 && !mode) {
+    npmlog.log('error', `${acct}`, `Forcibly delete!!`)
+    disconnectForUser(baseUrl, acct)
+  }
 }
 
 const getUserAcct = (baseUrl, accessToken) => new Promise((resolve, reject) => {
