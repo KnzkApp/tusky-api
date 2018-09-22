@@ -67,7 +67,7 @@ const connectForUser = (config) => {
       return
     }
 
-    let text = "", acct_s = (payload['account']['acct'].indexOf("@") === -1 ? payload['account']['acct'] + "@" + config.instance_url : payload['account']['acct']).toLowerCase();
+    let text = "", acct_s = (payload['account']['acct'].indexOf("@") === -1 ? payload['account']['acct'] + "@" + baseUrl : payload['account']['acct']).toLowerCase();
     if (!payload.account.display_name) payload.account.display_name = payload.account.username
     text = payload["account"]["display_name"];
     if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
@@ -108,7 +108,7 @@ const connectForUser = (config) => {
       }
       notification_mode = payload["type"];
     } else if (json.event === 'update') {
-      if (payload["account"]["acct"] + "@" + config.instance_url === acct ||
+      if (acct_s === acct ||
         payload["visibility"] === "direct" ||
         send_option["notification"]["user"][acct_s]["all"] ||
         send_option["notification"]["user"][acct_s]["keyword"] ||
@@ -343,6 +343,7 @@ app.post('/register', (req, res) => {
   if (Key === req.body.server_key && req.body.device_token && req.body.option) {
     getUserAcct(req.body.instance_url, req.body.access_token).then(acct => {
       if (acct) {
+        acct = acct.toLowerCase();
         Registration.findOne({ where: { instanceUrl: req.body.instance_url, acct: acct } }).then(bef_data => {
           req.body.acct = acct;
           req.body.created_at = (new Date()).getTime();
