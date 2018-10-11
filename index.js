@@ -14,6 +14,7 @@ const serverKey = process.env.SERVER_KEY || ''
 const port = process.env.PORT || 3000
 const Key = process.env.ACCESS_KEY
 //const allowDomains = JSON.parse(process.env.ALLOW_DOMAINS)
+const KnzkLiveNotification = process.env.KNZKLIVE_NOTIFICATION;
 const version = "v1";
 const wsStorage = {};
 const sequelize = new Sequelize('sqlite://apppush.sqlite', {
@@ -69,9 +70,13 @@ const connectForUser = (config) => {
 
     let text = "", acct_s = (payload['account']['acct'].indexOf("@") === -1 ? payload['account']['acct'] + "@" + baseUrl : payload['account']['acct']).toLowerCase();
     if (!payload.account.display_name) payload.account.display_name = payload.account.username
-    text = payload["account"]["display_name"];
-    if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
-      text += " (@" + payload["account"]["acct"] + ") ";
+    if (acct_s === KnzkLiveNotification && json.event === 'update') {
+      text = "";
+    } else {
+      text = payload["account"]["display_name"];
+      if (payload["account"]["display_name"] !== payload["account"]["acct"]) {
+        text += " (@" + payload["account"]["acct"] + ") ";
+      }
     }
 
     if (!send_option["notification"]["user"][acct_s]) {
@@ -108,35 +113,51 @@ const connectForUser = (config) => {
       }
       notification_mode = payload["type"];
     } else if (json.event === 'update') {
-      if (acct_s === acct ||
-        payload["visibility"] === "direct" ||
-        send_option["notification"]["user"][acct_s]["all"] ||
-        send_option["notification"]["user"][acct_s]["keyword"] ||
-        payload["reblog"]) {
-        return
-      }
-
-      let i = 0, match = "";
-      while (send_option["keyword"][i]) {
-        if (payload.content.match(new RegExp(send_option["keyword"][i], "g"))) {
-          log('info', `New keyword match`)
-          match = send_option["keyword"][i]
-          break
+      if (acct_s === KnzkLiveNotification) { //KnzkLive
+        if (!payload["reblog"] && payload.content.match(/!kl_start/g)) {
+          const live_title = payload.content.split('<br />')[1];
+          if (language === "ja") {
+            text += "【配信開始】" + live_title;
+          } else if (language === "en") {
+            text += "[KnzkLive]" + live_title;
+          } else {
+            log('info', 'Not found language:' + language)
+            return
+          }
+        } else {
+          return;
         }
-        i++;
-      }
+      } else { //キーワード
+        if (acct_s === acct ||
+          payload["visibility"] === "direct" ||
+          send_option["notification"]["user"][acct_s]["all"] ||
+          send_option["notification"]["user"][acct_s]["keyword"] ||
+          payload["reblog"]) {
+          return
+        }
 
-      if (!match) {
-        return
-      }
+        let i = 0, match = "";
+        while (send_option["keyword"][i]) {
+          if (payload.content.match(new RegExp(send_option["keyword"][i], "g"))) {
+            log('info', `New keyword match`)
+            match = send_option["keyword"][i]
+            break
+          }
+          i++;
+        }
 
-      if (language === "ja") {
-        text += " が「" + match + "」を発言";
-      } else if (language === "en") {
-        text += " said \"" + match + "\"";
-      } else {
-        log('info', 'Not found language:' + language)
-        return
+        if (!match) {
+          return
+        }
+
+        if (language === "ja") {
+          text += " が「" + match + "」を発言";
+        } else if (language === "en") {
+          text += " said \"" + match + "\"";
+        } else {
+          log('info', 'Not found language:' + language)
+          return
+        }
       }
       notification_mode = "keyword";
     }
@@ -154,15 +175,15 @@ const connectForUser = (config) => {
         "icon": "fcm_" + notification_mode,
         "color": "#ffffff"
       }
-    }
-
+    };
+    log('info', `text: ${text}`);
     axios.post('https://fcm.googleapis.com/fcm/send', JSON.stringify(firebaseMessage), {
       headers: {
         'Authorization': `key=${serverKey}`,
         'Content-Type': 'application/json'
       }
     }).then(response => {
-      log('info', `Sent to FCM, status ${response.status}: ${JSON.stringify(response.data)}`)
+      log('info', `Sent to FCM, status ${response.status}: ${JSON.stringify(response.data)}`);
 
       if (response.data.failure === 0 && response.data.canonical_ids === 0) {
         return
