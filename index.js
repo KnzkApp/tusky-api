@@ -61,8 +61,14 @@ const connectForUser = (config) => {
     }
     */
 
-    const json = JSON.parse(data)
-    const payload = JSON.parse(json.payload)
+    try {
+      var json = JSON.parse(data);
+      var payload = JSON.parse(json.payload);
+    } catch (e) {
+      log('error', `Failed to parse JSON`);
+      updateErrorCount(baseUrl, acct);
+      return;
+    }
 
     if (json.event === 'delete') {
       return
