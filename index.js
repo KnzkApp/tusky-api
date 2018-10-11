@@ -68,7 +68,8 @@ const connectForUser = (config) => {
       return
     }
 
-    let text = "", acct_s = (payload['account']['acct'].indexOf("@") === -1 ? payload['account']['acct'] + "@" + baseUrl : payload['account']['acct']).toLowerCase();
+    let text = "",
+      acct_s = (payload['account']['acct'].indexOf("@") === -1 ? payload['account']['acct'] + "@" + baseUrl : payload['account']['acct']).toLowerCase();
     if (!payload.account.display_name) payload.account.display_name = payload.account.username
     if (acct_s === KnzkLiveNotification && json.event === 'update') {
       text = "";
@@ -191,7 +192,12 @@ const connectForUser = (config) => {
 
       response.data.results.forEach(result => {
         if (result.message_id && result.registration_id) {
-          Registration.findOne({ where: { instanceUrl: baseUrl, acct: acct } }).then(registration => registration.update({ deviceToken: result.registration_id }))
+          Registration.findOne({
+            where: {
+              instanceUrl: baseUrl,
+              acct: acct
+            }
+          }).then(registration => registration.update({deviceToken: result.registration_id}))
         } else if (result.error === 'NotRegistered') {
           close()
         }
@@ -250,7 +256,7 @@ const connectForUser = (config) => {
 }
 
 const disconnectForUser = (baseUrl, acct) => {
-  Registration.findOne({ where: { instanceUrl: baseUrl, acct: acct } }).then((registration) => {
+  Registration.findOne({where: {instanceUrl: baseUrl, acct: acct}}).then((registration) => {
     if (registration != null) {
       registration.destroy()
     }
@@ -339,17 +345,17 @@ const Registration = sequelize.define('registration', {
     type: Sequelize.DATE
   }
 }, {
-    updatedAt: false
-  })
+  updatedAt: false
+})
 
 Registration.sync()
-  .then(() => Registration.findAll())
-  .then(registrations => registrations.forEach(registration => {
-    connectForUser(registration)
-  }))
+.then(() => Registration.findAll())
+.then(registrations => registrations.forEach(registration => {
+  connectForUser(registration)
+}))
 
 app.use(morgan('combined'));
-app.use(bodyParser.urlencoded({ extended: true }))
+app.use(bodyParser.urlencoded({extended: true}))
 
 app.get('/', (req, res) => {
   res.sendStatus(204)
@@ -365,13 +371,19 @@ app.post('/register', (req, res) => {
     getUserAcct(req.body.instance_url, req.body.access_token).then(acct => {
       if (acct) {
         acct = acct.toLowerCase();
-        Registration.findOne({ where: { instanceUrl: req.body.instance_url, acct: acct } }).then(bef_data => {
+        Registration.findOne({where: {instanceUrl: req.body.instance_url, acct: acct}}).then(bef_data => {
           req.body.acct = acct;
           req.body.created_at = (new Date()).getTime();
 
           if (bef_data) { //アプデ
             npmlog.log('info', `Update data: ${acct} / ${req.body.app_name}`);
-            bef_data.update({ accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, updatedAt: req.body.created_at });
+            bef_data.update({
+              accessToken: req.body.access_token,
+              deviceToken: req.body.device_token,
+              option: req.body.option,
+              language: req.body.language,
+              updatedAt: req.body.created_at
+            });
             disconnect(acct).then(re => {
               setTimeout(function () {
                 connectForUser(req.body)
@@ -379,10 +391,20 @@ app.post('/register', (req, res) => {
             });
           } else { //新規
             npmlog.log('info', `New user: ${acct} / ${req.body.app_name}`);
-            Registration.findOrCreate({ where: { instanceUrl: req.body.instance_url, accessToken: req.body.access_token, deviceToken: req.body.device_token, option: req.body.option, language: req.body.language, acct: acct, updatedAt: req.body.created_at } })
+            Registration.findOrCreate({
+              where: {
+                instanceUrl: req.body.instance_url,
+                accessToken: req.body.access_token,
+                deviceToken: req.body.device_token,
+                option: req.body.option,
+                language: req.body.language,
+                acct: acct,
+                updatedAt: req.body.created_at
+              }
+            })
             connectForUser(req.body);
           }
-          res.send({ ok: true });
+          res.send({ok: true});
         });
       } else {
         res.sendStatus(403)
@@ -399,7 +421,7 @@ app.post('/info', (req, res) => {
 
   res.header('Content-Type', 'application/json; charset=utf-8')
   Registration.count().then(c => {
-    res.send({ users: c, version: version, is_auth: is_auth })
+    res.send({users: c, version: version, is_auth: is_auth})
   })
 })
 
@@ -407,7 +429,7 @@ app.post('/unregister', (req, res) => {
   getUserAcct(req.body.instance_url, req.body.access_token).then(acct => {
     if (acct) {
       disconnectForUser(req.body.instance_url, acct);
-      res.send({ ok: true })
+      res.send({ok: true})
     } else {
       res.sendStatus(404);
     }
