@@ -4,7 +4,8 @@
   "description": "Push notification server for KnzkApp (forked from tusky-api)",
   "main": "index.js",
   "scripts": {
-    "start": "babel-node ./index.js --presets es2015,stage-2"
+    "build": "babel index.js -d dist",
+    "start": "node dist/index.js"
   },
   "author": "Eugen Rochko <eugen@zeonfederated.com>",
   "license": "MIT",
@@ -18,5 +19,10 @@
     "sequelize": "4.43.0",
     "sqlite3": "4.0.6",
     "ws": "6.2.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "7.2.3",
+    "@babel/core": "7.3.4",
+    "@babel/preset-env": "7.3.4"
   }
 }
